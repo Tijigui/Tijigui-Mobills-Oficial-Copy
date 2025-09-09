@@ -57,6 +57,25 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        income: {
+          DEFAULT: "hsl(var(--income))",
+          foreground: "hsl(var(--income-foreground))",
+        },
+        expense: {
+          DEFAULT: "hsl(var(--expense))",
+          foreground: "hsl(var(--expense-foreground))",
+        },
+        savings: {
+          DEFAULT: "hsl(var(--savings))",
+          foreground: "hsl(var(--savings-foreground))",
+        },
+        chart: {
+          "1": "hsl(var(--chart-1))",
+          "2": "hsl(var(--chart-2))",
+          "3": "hsl(var(--chart-3))",
+          "4": "hsl(var(--chart-4))",
+          "5": "hsl(var(--chart-5))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
