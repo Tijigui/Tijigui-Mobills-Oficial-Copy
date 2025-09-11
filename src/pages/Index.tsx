@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Dashboard from '@/components/Dashboard';
 import Accounts from '@/components/Accounts';
+import Transactions from '@/components/Transactions';
+import CreditCards from '@/components/CreditCards';
+import Settings from '@/components/Settings';
 
 const Index = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -13,26 +16,11 @@ const Index = () => {
       case 'accounts':
         return <Accounts />;
       case 'transactions':
-        return (
-          <div className="p-6">
-            <h1 className="text-3xl font-bold">Transações</h1>
-            <p className="text-muted-foreground">Em desenvolvimento...</p>
-          </div>
-        );
+        return <Transactions />;
       case 'credit-cards':
-        return (
-          <div className="p-6">
-            <h1 className="text-3xl font-bold">Cartões de Crédito</h1>
-            <p className="text-muted-foreground">Em desenvolvimento...</p>
-          </div>
-        );
+        return <CreditCards />;
       case 'settings':
-        return (
-          <div className="p-6">
-            <h1 className="text-3xl font-bold">Configurações</h1>
-            <p className="text-muted-foreground">Em desenvolvimento...</p>
-          </div>
-        );
+        return <Settings />;
       default:
         return <Dashboard />;
     }
