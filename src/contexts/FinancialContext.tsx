@@ -1,17 +1,26 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Account, Transaction, CreditCard, Category, DEFAULT_CATEGORIES } from '@/types/financial';
+import { FinancialGoal, Budget } from '@/types/goals';
 
 interface FinancialContextType {
   accounts: Account[];
   transactions: Transaction[];
   creditCards: CreditCard[];
   categories: Category[];
+  goals?: FinancialGoal[];
+  budgets?: Budget[];
   addAccount: (account: Omit<Account, 'id' | 'createdAt'>) => void;
   addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
   addCreditCard: (card: Omit<CreditCard, 'id'>) => void;
   updateAccount: (id: string, account: Partial<Account>) => void;
   deleteAccount: (id: string) => void;
   deleteTransaction: (id: string) => void;
+  addGoal?: (goal: Omit<FinancialGoal, 'id'>) => void;
+  updateGoal?: (id: string, goal: Partial<FinancialGoal>) => void;
+  deleteGoal?: (id: string) => void;
+  addBudget?: (budget: Omit<Budget, 'id' | 'spent'>) => void;
+  updateBudget?: (id: string, budget: Partial<Budget>) => void;
+  deleteBudget?: (id: string) => void;
   getTotalBalance: () => number;
   getMonthlyIncome: () => number;
   getMonthlyExpenses: () => number;
@@ -32,6 +41,8 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
+  const [goals, setGoals] = useState<FinancialGoal[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
 
   // Load data from localStorage
   useEffect(() => {
@@ -159,17 +170,64 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       .reduce((total, t) => total + t.amount, 0);
   };
 
+  // Goals methods
+  const addGoal = (goalData: Omit<FinancialGoal, 'id'>) => {
+    const newGoal: FinancialGoal = {
+      ...goalData,
+      id: Date.now().toString(),
+    };
+    setGoals(prev => [...prev, newGoal]);
+  };
+
+  const updateGoal = (id: string, goalData: Partial<FinancialGoal>) => {
+    setGoals(prev => prev.map(goal => 
+      goal.id === id ? { ...goal, ...goalData } : goal
+    ));
+  };
+
+  const deleteGoal = (id: string) => {
+    setGoals(prev => prev.filter(goal => goal.id !== id));
+  };
+
+  // Budget methods
+  const addBudget = (budgetData: Omit<Budget, 'id' | 'spent'>) => {
+    const newBudget: Budget = {
+      ...budgetData,
+      id: Date.now().toString(),
+      spent: 0,
+    };
+    setBudgets(prev => [...prev, newBudget]);
+  };
+
+  const updateBudget = (id: string, budgetData: Partial<Budget>) => {
+    setBudgets(prev => prev.map(budget => 
+      budget.id === id ? { ...budget, ...budgetData } : budget
+    ));
+  };
+
+  const deleteBudget = (id: string) => {
+    setBudgets(prev => prev.filter(budget => budget.id !== id));
+  };
+
   const value = {
     accounts,
     transactions,
     creditCards,
     categories,
+    goals,
+    budgets,
     addAccount,
     addTransaction,
     addCreditCard,
     updateAccount,
     deleteAccount,
     deleteTransaction,
+    addGoal,
+    updateGoal,
+    deleteGoal,
+    addBudget,
+    updateBudget,
+    deleteBudget,
     getTotalBalance,
     getMonthlyIncome,
     getMonthlyExpenses,

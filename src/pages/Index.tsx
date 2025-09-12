@@ -5,6 +5,11 @@ import Accounts from '@/components/Accounts';
 import Transactions from '@/components/Transactions';
 import CreditCards from '@/components/CreditCards';
 import Settings from '@/components/Settings';
+import FinancialGoals from '@/components/FinancialGoals';
+import Reports from '@/components/Reports';
+import BudgetTracker from '@/components/BudgetTracker';
+import Analytics from '@/components/Analytics';
+import NotificationCenter from '@/components/NotificationCenter';
 
 const Index = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -19,6 +24,16 @@ const Index = () => {
         return <Transactions />;
       case 'credit-cards':
         return <CreditCards />;
+      case 'goals':
+        return <FinancialGoals />;
+      case 'budget':
+        return <BudgetTracker />;
+      case 'reports':
+        return <Reports />;
+      case 'analytics':
+        return <Analytics />;
+      case 'notifications':
+        return <NotificationCenter />;
       case 'settings':
         return <Settings />;
       default:
