@@ -9,7 +9,17 @@ import {
   Settings, 
   ChevronLeft, 
   ChevronRight,
-  LogOut
+  LogOut,
+  Target,
+  PieChart,
+  TrendingUp,
+  Bell,
+  BarChart3,
+  Upload,
+  Calendar,
+  Brain,
+  GitCompare,
+  Download
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -24,7 +34,17 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'accounts', label: 'Contas', icon: Wallet },
     { id: 'transactions', label: 'Transações', icon: Receipt },
-    { id: 'credit-cards', label: 'Cartões de Crédito', icon: CreditCard },
+    { id: 'credit-cards', label: 'Cartões', icon: CreditCard },
+    { id: 'goals', label: 'Metas', icon: Target },
+    { id: 'budget', label: 'Orçamentos', icon: PieChart },
+    { id: 'import', label: 'Importar Extratos', icon: Upload },
+    { id: 'reminders', label: 'Lembretes', icon: Calendar },
+    { id: 'smart-categorization', label: 'IA Categorização', icon: Brain },
+    { id: 'comparison', label: 'Comparativo', icon: GitCompare },
+    { id: 'reports', label: 'Relatórios', icon: BarChart3 },
+    { id: 'analytics', label: 'Analytics', icon: TrendingUp },
+    { id: 'export', label: 'Exportar', icon: Download },
+    { id: 'notifications', label: 'Notificações', icon: Bell },
     { id: 'settings', label: 'Configurações', icon: Settings },
   ];
 

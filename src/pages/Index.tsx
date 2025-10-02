@@ -10,6 +10,11 @@ import Reports from '@/components/Reports';
 import BudgetTracker from '@/components/BudgetTracker';
 import Analytics from '@/components/Analytics';
 import NotificationCenter from '@/components/NotificationCenter';
+import ImportStatements from '@/components/ImportStatements';
+import PaymentReminders from '@/components/PaymentReminders';
+import SmartCategorization from '@/components/SmartCategorization';
+import PeriodComparison from '@/components/PeriodComparison';
+import ReportExporter from '@/components/ReportExporter';
 
 const Index = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -34,6 +39,16 @@ const Index = () => {
         return <Analytics />;
       case 'notifications':
         return <NotificationCenter />;
+      case 'import':
+        return <ImportStatements />;
+      case 'reminders':
+        return <PaymentReminders />;
+      case 'smart-categorization':
+        return <SmartCategorization />;
+      case 'comparison':
+        return <PeriodComparison />;
+      case 'export':
+        return <ReportExporter />;
       case 'settings':
         return <Settings />;
       default:
