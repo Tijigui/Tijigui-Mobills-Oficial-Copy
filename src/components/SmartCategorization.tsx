@@ -15,10 +15,8 @@ const SmartCategorization = () => {
   const analyzeTransactions = () => {
     setIsAnalyzing(true);
     
-    // Simulação de análise inteligente baseada em padrões
-    const uncategorized = transactions.filter(t => 
-      t.category === 'Alimentação' || t.category === 'Salário'
-    );
+    // Análise inteligente baseada em padrões de descrição
+    const allTransactions = [...transactions];
 
     const patterns: Record<string, string> = {
       'uber': 'Transporte',
@@ -39,7 +37,7 @@ const SmartCategorization = () => {
       'internet': 'Moradia'
     };
 
-    const newSuggestions = uncategorized.map(transaction => {
+    const newSuggestions = allTransactions.map(transaction => {
       const description = transaction.description.toLowerCase();
       let suggestedCategory = transaction.category;
       let confidence = 0;

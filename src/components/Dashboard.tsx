@@ -20,6 +20,39 @@ const Dashboard: React.FC = () => {
   const monthlyExpenses = getMonthlyExpenses();
   const monthlySavings = monthlyIncome - monthlyExpenses;
 
+  // Calculate previous month data for comparison
+  const previousMonthIncome = React.useMemo(() => {
+    const lastMonth = new Date();
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+    return transactions
+      .filter(t => 
+        t.type === 'income' && 
+        t.date.getMonth() === lastMonth.getMonth() && 
+        t.date.getFullYear() === lastMonth.getFullYear()
+      )
+      .reduce((total, t) => total + t.amount, 0);
+  }, [transactions]);
+
+  const previousMonthExpenses = React.useMemo(() => {
+    const lastMonth = new Date();
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+    return transactions
+      .filter(t => 
+        t.type === 'expense' && 
+        t.date.getMonth() === lastMonth.getMonth() && 
+        t.date.getFullYear() === lastMonth.getFullYear()
+      )
+      .reduce((total, t) => total + t.amount, 0);
+  }, [transactions]);
+
+  const incomeVariation = previousMonthIncome > 0 
+    ? ((monthlyIncome - previousMonthIncome) / previousMonthIncome * 100).toFixed(1)
+    : '0.0';
+  
+  const expensesVariation = previousMonthExpenses > 0
+    ? ((monthlyExpenses - previousMonthExpenses) / previousMonthExpenses * 100).toFixed(1)
+    : '0.0';
+
   // Data for expense categories chart
   const expensesByCategory = categories
     .filter(cat => cat.type === 'expense')
@@ -98,7 +131,9 @@ const Dashboard: React.FC = () => {
               {formatCurrency(monthlyIncome)}
             </div>
             <p className="text-xs text-muted-foreground">
-              +12% em relação ao mês anterior
+              {incomeVariation !== '0.0' 
+                ? `${parseFloat(incomeVariation) >= 0 ? '+' : ''}${incomeVariation}% vs mês anterior`
+                : 'Primeiro mês'}
             </p>
           </CardContent>
         </Card>
@@ -113,7 +148,9 @@ const Dashboard: React.FC = () => {
               {formatCurrency(monthlyExpenses)}
             </div>
             <p className="text-xs text-muted-foreground">
-              -5% em relação ao mês anterior
+              {expensesVariation !== '0.0'
+                ? `${parseFloat(expensesVariation) >= 0 ? '+' : ''}${expensesVariation}% vs mês anterior`
+                : 'Primeiro mês'}
             </p>
           </CardContent>
         </Card>

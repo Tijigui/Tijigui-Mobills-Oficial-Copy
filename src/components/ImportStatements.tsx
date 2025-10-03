@@ -150,12 +150,12 @@ const ImportStatements = () => {
           {results && (
             <Card className="bg-muted/50">
               <CardContent className="pt-6 space-y-4">
-                <div className="flex items-center gap-2 text-green-600">
+                <div className="flex items-center gap-2 text-income">
                   <CheckCircle className="h-5 w-5" />
                   <span className="font-medium">{results.success} transações importadas</span>
                 </div>
                 {results.failed > 0 && (
-                  <div className="flex items-center gap-2 text-orange-600">
+                  <div className="flex items-center gap-2 text-destructive">
                     <AlertCircle className="h-5 w-5" />
                     <span className="font-medium">{results.failed} transações falharam</span>
                   </div>

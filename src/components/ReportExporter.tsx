@@ -139,13 +139,21 @@ const ReportExporter = () => {
         filename = `metas_${format(new Date(), 'yyyy-MM-dd')}.csv`;
         break;
       case 'complete':
-        const allData = [
-          { Tipo: 'TRANSAÇÕES', ...generateTransactionsReport()[0] },
-          ...generateTransactionsReport().slice(1),
-          { Tipo: '' },
-          { Tipo: 'CONTAS', ...generateAccountsReport()[0] },
-          ...generateAccountsReport().slice(1),
-        ];
+        const transData = generateTransactionsReport();
+        const accData = generateAccountsReport();
+        const allData = [];
+        
+        if (transData.length > 0) {
+          allData.push({ Tipo: 'TRANSAÇÕES' });
+          allData.push(...transData);
+          allData.push({ Tipo: '' });
+        }
+        
+        if (accData.length > 0) {
+          allData.push({ Tipo: 'CONTAS' });
+          allData.push(...accData);
+        }
+        
         data = allData;
         filename = `relatorio_completo_${format(new Date(), 'yyyy-MM-dd')}.csv`;
         break;

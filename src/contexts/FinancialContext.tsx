@@ -49,9 +49,14 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const savedAccounts = localStorage.getItem('financial-accounts');
     const savedTransactions = localStorage.getItem('financial-transactions');
     const savedCreditCards = localStorage.getItem('financial-credit-cards');
+    const savedGoals = localStorage.getItem('financial-goals');
+    const savedBudgets = localStorage.getItem('financial-budgets');
 
     if (savedAccounts) {
-      setAccounts(JSON.parse(savedAccounts));
+      setAccounts(JSON.parse(savedAccounts).map((a: any) => ({
+        ...a,
+        createdAt: new Date(a.createdAt)
+      })));
     }
     if (savedTransactions) {
       setTransactions(JSON.parse(savedTransactions).map((t: any) => ({
@@ -61,6 +66,16 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
     if (savedCreditCards) {
       setCreditCards(JSON.parse(savedCreditCards));
+    }
+    if (savedGoals) {
+      setGoals(JSON.parse(savedGoals).map((g: any) => ({
+        ...g,
+        deadline: new Date(g.deadline),
+        createdAt: new Date(g.createdAt)
+      })));
+    }
+    if (savedBudgets) {
+      setBudgets(JSON.parse(savedBudgets));
     }
   }, []);
 
@@ -76,6 +91,14 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   useEffect(() => {
     localStorage.setItem('financial-credit-cards', JSON.stringify(creditCards));
   }, [creditCards]);
+
+  useEffect(() => {
+    localStorage.setItem('financial-goals', JSON.stringify(goals));
+  }, [goals]);
+
+  useEffect(() => {
+    localStorage.setItem('financial-budgets', JSON.stringify(budgets));
+  }, [budgets]);
 
   const addAccount = (accountData: Omit<Account, 'id' | 'createdAt'>) => {
     const newAccount: Account = {
@@ -93,16 +116,19 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
     setTransactions(prev => [...prev, newTransaction]);
 
-    // Update account balance
-    setAccounts(prev => prev.map(account => {
-      if (account.name === transactionData.account) {
-        const balanceChange = transactionData.type === 'income' 
-          ? transactionData.amount 
-          : -transactionData.amount;
-        return { ...account, balance: account.balance + balanceChange };
-      }
-      return account;
-    }));
+    // Update account balance - find account by name since transaction stores name
+    const targetAccount = accounts.find(acc => acc.name === transactionData.account);
+    if (targetAccount) {
+      setAccounts(prev => prev.map(account => {
+        if (account.id === targetAccount.id) {
+          const balanceChange = transactionData.type === 'income' 
+            ? transactionData.amount 
+            : -transactionData.amount;
+          return { ...account, balance: account.balance + balanceChange };
+        }
+        return account;
+      }));
+    }
   };
 
   const addCreditCard = (cardData: Omit<CreditCard, 'id'>) => {
@@ -126,16 +152,19 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const deleteTransaction = (id: string) => {
     const transaction = transactions.find(t => t.id === id);
     if (transaction) {
-      // Revert account balance
-      setAccounts(prev => prev.map(account => {
-        if (account.name === transaction.account) {
-          const balanceChange = transaction.type === 'income' 
-            ? -transaction.amount 
-            : transaction.amount;
-          return { ...account, balance: account.balance + balanceChange };
-        }
-        return account;
-      }));
+      // Revert account balance - find account by name
+      const targetAccount = accounts.find(acc => acc.name === transaction.account);
+      if (targetAccount) {
+        setAccounts(prev => prev.map(account => {
+          if (account.id === targetAccount.id) {
+            const balanceChange = transaction.type === 'income' 
+              ? -transaction.amount 
+              : transaction.amount;
+            return { ...account, balance: account.balance + balanceChange };
+          }
+          return account;
+        }));
+      }
     }
     setTransactions(prev => prev.filter(t => t.id !== id));
   };

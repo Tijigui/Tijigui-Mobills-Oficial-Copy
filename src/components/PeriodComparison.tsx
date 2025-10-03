@@ -134,16 +134,16 @@ const PeriodComparison = () => {
             <CardTitle className="text-sm font-medium">Receitas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-income">
               R$ {period1Data.income.toFixed(2)}
             </div>
             <div className="flex items-center gap-2 text-sm mt-2">
               {getVariation(period1Data.income, period2Data.income) >= 0 ? (
-                <TrendingUp className="h-4 w-4 text-green-600" />
+                <TrendingUp className="h-4 w-4 text-income" />
               ) : (
-                <TrendingDown className="h-4 w-4 text-red-600" />
+                <TrendingDown className="h-4 w-4 text-expense" />
               )}
-              <span className={getVariation(period1Data.income, period2Data.income) >= 0 ? 'text-green-600' : 'text-red-600'}>
+              <span className={getVariation(period1Data.income, period2Data.income) >= 0 ? 'text-income' : 'text-expense'}>
                 {Math.abs(getVariation(period1Data.income, period2Data.income)).toFixed(1)}%
               </span>
               <span className="text-muted-foreground">vs período anterior</span>
@@ -156,16 +156,16 @@ const PeriodComparison = () => {
             <CardTitle className="text-sm font-medium">Despesas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
+            <div className="text-2xl font-bold text-expense">
               R$ {period1Data.expenses.toFixed(2)}
             </div>
             <div className="flex items-center gap-2 text-sm mt-2">
               {getVariation(period1Data.expenses, period2Data.expenses) <= 0 ? (
-                <TrendingDown className="h-4 w-4 text-green-600" />
+                <TrendingDown className="h-4 w-4 text-income" />
               ) : (
-                <TrendingUp className="h-4 w-4 text-red-600" />
+                <TrendingUp className="h-4 w-4 text-expense" />
               )}
-              <span className={getVariation(period1Data.expenses, period2Data.expenses) <= 0 ? 'text-green-600' : 'text-red-600'}>
+              <span className={getVariation(period1Data.expenses, period2Data.expenses) <= 0 ? 'text-income' : 'text-expense'}>
                 {Math.abs(getVariation(period1Data.expenses, period2Data.expenses)).toFixed(1)}%
               </span>
               <span className="text-muted-foreground">vs período anterior</span>
@@ -183,11 +183,11 @@ const PeriodComparison = () => {
             </div>
             <div className="flex items-center gap-2 text-sm mt-2">
               {getVariation(period1Data.balance, period2Data.balance) >= 0 ? (
-                <TrendingUp className="h-4 w-4 text-green-600" />
+                <TrendingUp className="h-4 w-4 text-income" />
               ) : (
-                <TrendingDown className="h-4 w-4 text-red-600" />
+                <TrendingDown className="h-4 w-4 text-expense" />
               )}
-              <span className={getVariation(period1Data.balance, period2Data.balance) >= 0 ? 'text-green-600' : 'text-red-600'}>
+              <span className={getVariation(period1Data.balance, period2Data.balance) >= 0 ? 'text-income' : 'text-expense'}>
                 {Math.abs(getVariation(period1Data.balance, period2Data.balance)).toFixed(1)}%
               </span>
               <span className="text-muted-foreground">vs período anterior</span>
@@ -233,7 +233,7 @@ const PeriodComparison = () => {
                   <div className="text-sm text-muted-foreground">{period1Data.label}</div>
                   <div className="font-medium">R$ {cat.period1.toFixed(2)}</div>
                 </div>
-                <div className={`text-sm font-medium ${getVariation(cat.period1, cat.period2) <= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <div className={`text-sm font-medium ${getVariation(cat.period1, cat.period2) <= 0 ? 'text-income' : 'text-expense'}`}>
                   {getVariation(cat.period1, cat.period2) > 0 ? '+' : ''}
                   {getVariation(cat.period1, cat.period2).toFixed(1)}%
                 </div>

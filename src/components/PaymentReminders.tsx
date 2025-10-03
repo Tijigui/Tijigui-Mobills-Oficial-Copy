@@ -233,7 +233,7 @@ const PaymentReminders = () => {
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
                           <DollarSign className="h-4 w-4" />
-                          <span className={reminder.type === 'income' ? 'text-green-600' : 'text-red-600'}>
+                          <span className={reminder.type === 'income' ? 'text-income' : 'text-expense'}>
                             R$ {reminder.amount.toFixed(2)}
                           </span>
                         </div>
