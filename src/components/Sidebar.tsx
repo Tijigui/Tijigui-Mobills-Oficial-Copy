@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   Home, 
   Wallet, 
@@ -29,6 +30,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { signOut } = useAuth();
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
@@ -100,6 +102,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
             "w-full justify-start text-left text-muted-foreground hover:text-destructive",
             isCollapsed ? "px-2" : "px-3"
           )}
+          onClick={signOut}
         >
           <LogOut className={cn("h-4 w-4", !isCollapsed && "mr-3")} />
           {!isCollapsed && <span>Sair</span>}
