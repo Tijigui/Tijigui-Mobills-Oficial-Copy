@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { Account, Transaction, CreditCard, Category, DEFAULT_CATEGORIES } from '@/types/financial';
 import { FinancialGoal, Budget } from '@/types/goals';
 import { supabase } from '@/integrations/supabase/client';
@@ -419,18 +419,34 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const account = accounts.find(a => a.name === transaction.account);
       if (!account) throw new Error('Conta não encontrada');
 
-      // Revert balance
+      // Calculate balance change
       const balanceChange = transaction.type === 'income' 
         ? -transaction.amount 
         : transaction.amount;
 
-      const { error: updateError } = await supabase
-        .from('accounts')
-        .update({ balance: account.balance + balanceChange })
-        .eq('id', account.id);
+      // Use a transaction to ensure atomicity
+      const { error: updateError } = await supabase.rpc('update_account_balance', {
+        account_id: account.id,
+        balance_change: balanceChange
+      });
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        // Fallback to individual updates if RPC fails
+        const currentBalance = (await supabase
+          .from('accounts')
+          .select('balance')
+          .eq('id', account.id)
+          .single()).data?.balance || 0;
 
+        const { error: directUpdateError } = await supabase
+          .from('accounts')
+          .update({ balance: currentBalance + balanceChange })
+          .eq('id', account.id);
+
+        if (directUpdateError) throw directUpdateError;
+      }
+
+      // Delete the transaction
       const { error } = await supabase
         .from('transactions')
         .delete()
@@ -439,6 +455,7 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       if (error) throw error;
 
+      // Update local state
       setAccounts(prev => prev.map(a => 
         a.id === account.id ? { ...a, balance: a.balance + balanceChange } : a
       ));
@@ -459,11 +476,11 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const getTotalBalance = () => {
+  const getTotalBalance = useMemo(() => {
     return accounts.reduce((total, account) => total + account.balance, 0);
-  };
+  }, [accounts]);
 
-  const getMonthlyIncome = () => {
+  const getMonthlyIncome = useMemo(() => {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     
@@ -474,9 +491,9 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         t.date.getFullYear() === currentYear
       )
       .reduce((total, t) => total + t.amount, 0);
-  };
+  }, [transactions]);
 
-  const getMonthlyExpenses = () => {
+  const getMonthlyExpenses = useMemo(() => {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     
@@ -487,7 +504,7 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         t.date.getFullYear() === currentYear
       )
       .reduce((total, t) => total + t.amount, 0);
-  };
+  }, [transactions]);
 
   // Goals methods
   const addGoal = async (goalData: Omit<FinancialGoal, 'id'>) => {
