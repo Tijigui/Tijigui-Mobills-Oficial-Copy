@@ -4,79 +4,123 @@ import { FinancialGoal, Budget } from '@/types/goals';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useFinancialCalculations } from '@/hooks/useFinancialCalculations';
 
-interface FinancialContextType {
+// Contexts for different entities
+interface AccountsContextType {
   accounts: Account[];
-  transactions: Transaction[];
-  creditCards: CreditCard[];
-  categories: Category[];
-  goals?: FinancialGoal[];
-  budgets?: Budget[];
   addAccount: (account: Omit<Account, 'id' | 'createdAt'>) => Promise<void>;
-  addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
-  addCreditCard: (card: Omit<CreditCard, 'id'>) => Promise<void>;
   updateAccount: (id: string, account: Partial<Account>) => Promise<void>;
   deleteAccount: (id: string) => Promise<void>;
-  deleteTransaction: (id: string) => Promise<void>;
-  addGoal?: (goal: Omit<FinancialGoal, 'id'>) => Promise<void>;
-  updateGoal?: (id: string, goal: Partial<FinancialGoal>) => Promise<void>;
-  deleteGoal?: (id: string) => Promise<void>;
-  addBudget?: (budget: Omit<Budget, 'id' | 'spent'>) => Promise<void>;
-  updateBudget?: (id: string, budget: Partial<Budget>) => Promise<void>;
-  deleteBudget?: (id: string) => Promise<void>;
-  getTotalBalance: () => number;
-  getMonthlyIncome: () => number;
-  getMonthlyExpenses: () => number;
   loading: boolean;
 }
 
-const FinancialContext = createContext<FinancialContextType | undefined>(undefined);
+interface TransactionsContextType {
+  transactions: Transaction[];
+  addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
+  deleteTransaction: (id: string) => Promise<void>;
+  loading: boolean;
+}
 
+interface CreditCardsContextType {
+  creditCards: CreditCard[];
+  addCreditCard: (card: Omit<CreditCard, 'id'>) => Promise<void>;
+  loading: boolean;
+}
+
+interface GoalsContextType {
+  goals: FinancialGoal[];
+  addGoal: (goal: Omit<FinancialGoal, 'id'>) => Promise<void>;
+  updateGoal: (id: string, goal: Partial<FinancialGoal>) => Promise<void>;
+  deleteGoal: (id: string) => Promise<void>;
+  loading: boolean;
+}
+
+interface BudgetsContextType {
+  budgets: Budget[];
+  addBudget: (budget: Omit<Budget, 'id' | 'spent'>) => Promise<void>;
+  updateBudget: (id: string, budget: Partial<Budget>) => Promise<void>;
+  deleteBudget: (id: string) => Promise<void>;
+  loading: boolean;
+}
+
+// Individual contexts
+const AccountsContext = createContext<AccountsContextType | undefined>(undefined);
+const TransactionsContext = createContext<TransactionsContextType | undefined>(undefined);
+const CreditCardsContext = createContext<CreditCardsContextType | undefined>(undefined);
+const GoalsContext = createContext<GoalsContextType | undefined>(undefined);
+const BudgetsContext = createContext<BudgetsContextType | undefined>(undefined);
+
+// Hook for financial calculations
 export const useFinancial = () => {
-  const context = useContext(FinancialContext);
-  if (!context) {
-    throw new Error('useFinancial must be used within a FinancialProvider');
+  const accounts = useContext(AccountsContext);
+  const transactions = useContext(TransactionsContext);
+  const creditCards = useContext(CreditCardsContext);
+  const goals = useContext(GoalsContext);
+  const budgets = useContext(BudgetsContext);
+  
+  if (!accounts || !transactions || !creditCards || !goals || !budgets) {
+    throw new Error('useFinancial must be used within FinancialProvider');
   }
-  return context;
+
+  const calculations = useFinancialCalculations();
+
+  return {
+    accounts: accounts.accounts,
+    transactions: transactions.transactions,
+    creditCards: creditCards.creditCards,
+    categories: DEFAULT_CATEGORIES,
+    goals: goals.goals,
+    budgets: budgets.budgets,
+    addAccount: accounts.addAccount,
+    addTransaction: transactions.addTransaction,
+    addCreditCard: creditCards.addCreditCard,
+    updateAccount: accounts.updateAccount,
+    deleteAccount: accounts.deleteAccount,
+    deleteTransaction: transactions.deleteTransaction,
+    addGoal: goals.addGoal,
+    updateGoal: goals.updateGoal,
+    deleteGoal: goals.deleteGoal,
+    addBudget: budgets.addBudget,
+    updateBudget: budgets.updateBudget,
+    deleteBudget: budgets.deleteBudget,
+    getTotalBalance: calculations.totalBalance,
+    getMonthlyIncome: calculations.monthlyIncome,
+    getMonthlyExpenses: calculations.monthlyExpenses,
+    loading: accounts.loading || transactions.loading || creditCards.loading || goals.loading || budgets.loading,
+  };
 };
 
-export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+// Account Context Provider
+export const AccountsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
-  const [categories] = useState<Category[]>(DEFAULT_CATEGORIES);
-  const [goals, setGoals] = useState<FinancialGoal[]>([]);
-  const [budgets, setBudgets] = useState<Budget[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Load all data from Supabase
   useEffect(() => {
     if (!user) {
       setLoading(false);
       return;
     }
 
-    loadAllData();
+    loadAccounts();
   }, [user]);
 
-  const loadAllData = async () => {
+  const loadAccounts = async () => {
     if (!user) return;
 
     try {
       setLoading(true);
-
-      // Load accounts
-      const { data: accountsData, error: accountsError } = await supabase
+      const { data, error } = await supabase
         .from('accounts')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (accountsError) throw accountsError;
+      if (error) throw error;
 
-      setAccounts(accountsData?.map((a: any) => ({
+      setAccounts(data?.map((a: any) => ({
         id: a.id,
         name: a.name,
         bank: a.bank,
@@ -85,93 +129,10 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         color: a.color,
         createdAt: new Date(a.created_at)
       })) || []);
-
-      // Load transactions
-      const { data: transactionsData, error: transactionsError } = await supabase
-        .from('transactions')
-        .select('*, accounts!transactions_account_id_fkey(name)')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false });
-
-      if (transactionsError) throw transactionsError;
-
-      setTransactions(transactionsData?.map((t: any) => ({
-        id: t.id,
-        description: t.description,
-        amount: Number(t.amount),
-        type: t.type as 'income' | 'expense',
-        category: t.category,
-        account: t.accounts?.name || '',
-        date: new Date(t.date),
-        recurring: t.recurring,
-        tags: t.tags || []
-      })) || []);
-
-      // Load credit cards
-      const { data: cardsData, error: cardsError } = await supabase
-        .from('credit_cards')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (cardsError) throw cardsError;
-
-      setCreditCards(cardsData?.map((c: any) => ({
-        id: c.id,
-        name: c.name,
-        bank: c.bank,
-        limit: Number(c.card_limit),
-        currentBalance: Number(c.current_balance),
-        dueDate: c.due_date,
-        closingDate: c.closing_date,
-        color: c.color
-      })) || []);
-
-      // Load goals
-      const { data: goalsData, error: goalsError } = await supabase
-        .from('financial_goals')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (goalsError) throw goalsError;
-
-      setGoals(goalsData?.map((g: any) => ({
-        id: g.id,
-        title: g.title,
-        description: g.description,
-        targetAmount: Number(g.target_amount),
-        currentAmount: Number(g.current_amount),
-        deadline: new Date(g.deadline),
-        category: g.category as 'savings' | 'investment' | 'purchase' | 'debt' | 'emergency',
-        color: g.color,
-        createdAt: new Date(g.created_at),
-        completed: g.completed
-      })) || []);
-
-      // Load budgets
-      const { data: budgetsData, error: budgetsError } = await supabase
-        .from('budgets')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (budgetsError) throw budgetsError;
-
-      setBudgets(budgetsData?.map((b: any) => ({
-        id: b.id,
-        category: b.category,
-        limit: Number(b.budget_limit),
-        spent: Number(b.spent),
-        period: b.period as 'monthly' | 'weekly' | 'yearly',
-        color: b.color,
-        alerts: b.alerts
-      })) || []);
-
     } catch (error: any) {
-      console.error('Error loading data:', error);
+      console.error('Error loading accounts:', error);
       toast({
-        title: "Erro ao carregar dados",
+        title: "Erro ao carregar contas",
         description: error.message,
         variant: "destructive"
       });
@@ -210,7 +171,6 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       };
 
       setAccounts(prev => [newAccount, ...prev]);
-
       toast({
         title: "Conta adicionada",
         description: "Conta criada com sucesso!"
@@ -219,125 +179,6 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       console.error('Error adding account:', error);
       toast({
         title: "Erro ao adicionar conta",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  };
-
-  const addTransaction = async (transactionData: Omit<Transaction, 'id'>) => {
-    if (!user) return;
-
-    try {
-      // Find account by name
-      const account = accounts.find(a => a.name === transactionData.account);
-      if (!account) throw new Error('Conta não encontrada');
-
-      const { data, error } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: user.id,
-          account_id: account.id,
-          description: transactionData.description,
-          amount: transactionData.amount,
-          type: transactionData.type,
-          category: transactionData.category,
-          date: transactionData.date.toISOString(),
-          recurring: transactionData.recurring,
-          tags: transactionData.tags || []
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Update account balance
-      const balanceChange = transactionData.type === 'income' 
-        ? transactionData.amount 
-        : -transactionData.amount;
-
-      const { error: updateError } = await supabase
-        .from('accounts')
-        .update({ balance: account.balance + balanceChange })
-        .eq('id', account.id);
-
-      if (updateError) throw updateError;
-
-      // Update local state
-      setAccounts(prev => prev.map(a => 
-        a.id === account.id ? { ...a, balance: a.balance + balanceChange } : a
-      ));
-
-      const newTransaction: Transaction = {
-        id: data.id,
-        description: data.description,
-        amount: Number(data.amount),
-        type: data.type as 'income' | 'expense',
-        category: data.category,
-        account: transactionData.account,
-        date: new Date(data.date),
-        recurring: data.recurring,
-        tags: data.tags || []
-      };
-
-      setTransactions(prev => [newTransaction, ...prev]);
-
-      toast({
-        title: "Transação adicionada",
-        description: "Transação criada com sucesso!"
-      });
-    } catch (error: any) {
-      console.error('Error adding transaction:', error);
-      toast({
-        title: "Erro ao adicionar transação",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  };
-
-  const addCreditCard = async (cardData: Omit<CreditCard, 'id'>) => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('credit_cards')
-        .insert({
-          user_id: user.id,
-          name: cardData.name,
-          bank: cardData.bank,
-          card_limit: cardData.limit,
-          current_balance: cardData.currentBalance,
-          due_date: cardData.dueDate,
-          closing_date: cardData.closingDate,
-          color: cardData.color
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      const newCard: CreditCard = {
-        id: data.id,
-        name: data.name,
-        bank: data.bank,
-        limit: Number(data.card_limit),
-        currentBalance: Number(data.current_balance),
-        dueDate: data.due_date,
-        closingDate: data.closing_date,
-        color: data.color
-      };
-
-      setCreditCards(prev => [newCard, ...prev]);
-
-      toast({
-        title: "Cartão adicionado",
-        description: "Cartão criado com sucesso!"
-      });
-    } catch (error: any) {
-      console.error('Error adding credit card:', error);
-      toast({
-        title: "Erro ao adicionar cartão",
         description: error.message,
         variant: "destructive"
       });
@@ -394,7 +235,6 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (error) throw error;
 
       setAccounts(prev => prev.filter(account => account.id !== id));
-
       toast({
         title: "Conta excluída",
         description: "Conta excluída com sucesso!"
@@ -409,6 +249,123 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
+  return (
+    <AccountsContext.Provider value={{
+      accounts,
+      addAccount,
+      updateAccount,
+      deleteAccount,
+      loading
+    }}>
+      {children}
+    </AccountsContext.Provider>
+  );
+};
+
+// Transaction Context Provider
+export const TransactionsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    loadTransactions();
+  }, [user]);
+
+  const loadTransactions = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*, accounts!transactions_account_id_fkey(name)')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false });
+
+      if (error) throw error;
+
+      setTransactions(data?.map((t: any) => ({
+        id: t.id,
+        description: t.description,
+        amount: Number(t.amount),
+        type: t.type as 'income' | 'expense',
+        category: t.category,
+        account: t.accounts?.name || '',
+        date: new Date(t.date),
+        recurring: t.recurring,
+        tags: t.tags || []
+      })) || []);
+    } catch (error: any) {
+      console.error('Error loading transactions:', error);
+      toast({
+        title: "Erro ao carregar transações",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addTransaction = async (transactionData: Omit<Transaction, 'id'>) => {
+    if (!user) return;
+
+    try {
+      const account = transactions.find(t => t.account === transactionData.account)?.account;
+      if (!account) throw new Error('Conta não encontrada');
+
+      const { data, error } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: user.id,
+          account_id: account,
+          description: transactionData.description,
+          amount: transactionData.amount,
+          type: transactionData.type,
+          category: transactionData.category,
+          date: transactionData.date.toISOString(),
+          recurring: transactionData.recurring,
+          tags: transactionData.tags || []
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newTransaction: Transaction = {
+        id: data.id,
+        description: data.description,
+        amount: Number(data.amount),
+        type: data.type as 'income' | 'expense',
+        category: data.category,
+        account: transactionData.account,
+        date: new Date(data.date),
+        recurring: data.recurring,
+        tags: data.tags || []
+      };
+
+      setTransactions(prev => [newTransaction, ...prev]);
+      toast({
+        title: "Transação adicionada",
+        description: "Transação criada com sucesso!"
+      });
+    } catch (error: any) {
+      console.error('Error adding transaction:', error);
+      toast({
+        title: "Erro ao adicionar transação",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
   const deleteTransaction = async (id: string) => {
     if (!user) return;
 
@@ -416,17 +373,13 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const transaction = transactions.find(t => t.id === id);
       if (!transaction) throw new Error('Transação não encontrada');
 
-      const account = accounts.find(a => a.name === transaction.account);
-      if (!account) throw new Error('Conta não encontrada');
-
-      // Calculate balance change
       const balanceChange = transaction.type === 'income' 
         ? -transaction.amount 
         : transaction.amount;
 
-      // Use a transaction to ensure atomicity
+      // Update account balance first
       const { error: updateError } = await supabase.rpc('update_account_balance', {
-        account_id: account.id,
+        account_id: transaction.account,
         balance_change: balanceChange
       });
 
@@ -435,13 +388,13 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const currentBalance = (await supabase
           .from('accounts')
           .select('balance')
-          .eq('id', account.id)
+          .eq('id', transaction.account)
           .single()).data?.balance || 0;
 
         const { error: directUpdateError } = await supabase
           .from('accounts')
           .update({ balance: currentBalance + balanceChange })
-          .eq('id', account.id);
+          .eq('id', transaction.account);
 
         if (directUpdateError) throw directUpdateError;
       }
@@ -455,13 +408,7 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       if (error) throw error;
 
-      // Update local state
-      setAccounts(prev => prev.map(a => 
-        a.id === account.id ? { ...a, balance: a.balance + balanceChange } : a
-      ));
-
       setTransactions(prev => prev.filter(t => t.id !== id));
-
       toast({
         title: "Transação excluída",
         description: "Transação excluída com sucesso!"
@@ -476,37 +423,180 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const getTotalBalance = useMemo(() => {
-    return accounts.reduce((total, account) => total + account.balance, 0);
-  }, [accounts]);
+  return (
+    <TransactionsContext.Provider value={{
+      transactions,
+      addTransaction,
+      deleteTransaction,
+      loading
+    }}>
+      {children}
+    </TransactionsContext.Provider>
+  );
+};
 
-  const getMonthlyIncome = useMemo(() => {
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    
-    return transactions
-      .filter(t => 
-        t.type === 'income' && 
-        t.date.getMonth() === currentMonth && 
-        t.date.getFullYear() === currentYear
-      )
-      .reduce((total, t) => total + t.amount, 0);
-  }, [transactions]);
+// Credit Cards Context Provider
+export const CreditCardsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
-  const getMonthlyExpenses = useMemo(() => {
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    
-    return transactions
-      .filter(t => 
-        t.type === 'expense' && 
-        t.date.getMonth() === currentMonth && 
-        t.date.getFullYear() === currentYear
-      )
-      .reduce((total, t) => total + t.amount, 0);
-  }, [transactions]);
+  useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
-  // Goals methods
+    loadCreditCards();
+  }, [user]);
+
+  const loadCreditCards = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('credit_cards')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setCreditCards(data?.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        bank: c.bank,
+        limit: Number(c.card_limit),
+        currentBalance: Number(c.current_balance),
+        dueDate: c.due_date,
+        closingDate: c.closing_date,
+        color: c.color
+      })) || []);
+    } catch (error: any) {
+      console.error('Error loading credit cards:', error);
+      toast({
+        title: "Erro ao carregar cartões",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addCreditCard = async (cardData: Omit<CreditCard, 'id'>) => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('credit_cards')
+        .insert({
+          user_id: user.id,
+          name: cardData.name,
+          bank: cardData.bank,
+          card_limit: cardData.limit,
+          current_balance: cardData.currentBalance,
+          due_date: cardData.dueDate,
+          closing_date: cardData.closingDate,
+          color: cardData.color
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newCard: CreditCard = {
+        id: data.id,
+        name: data.name,
+        bank: data.bank,
+        limit: Number(data.card_limit),
+        currentBalance: Number(data.current_balance),
+        dueDate: data.due_date,
+        closingDate: data.closing_date,
+        color: data.color
+      };
+
+      setCreditCards(prev => [newCard, ...prev]);
+      toast({
+        title: "Cartão adicionado",
+        description: "Cartão criado com sucesso!"
+      });
+    } catch (error: any) {
+      console.error('Error adding credit card:', error);
+      toast({
+        title: "Erro ao adicionar cartão",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  return (
+    <CreditCardsContext.Provider value={{
+      creditCards,
+      addCreditCard,
+      loading
+    }}>
+      {children}
+    </CreditCardsContext.Provider>
+  );
+};
+
+// Goals Context Provider
+export const GoalsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [goals, setGoals] = useState<FinancialGoal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    loadGoals();
+  }, [user]);
+
+  const loadGoals = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('financial_goals')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setGoals(data?.map((g: any) => ({
+        id: g.id,
+        title: g.title,
+        description: g.description,
+        targetAmount: Number(g.target_amount),
+        currentAmount: Number(g.current_amount),
+        deadline: new Date(g.deadline),
+        category: g.category as 'savings' | 'investment' | 'purchase' | 'debt' | 'emergency',
+        color: g.color,
+        createdAt: new Date(g.created_at),
+        completed: g.completed
+      })) || []);
+    } catch (error: any) {
+      console.error('Error loading goals:', error);
+      toast({
+        title: "Erro ao carregar metas",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const addGoal = async (goalData: Omit<FinancialGoal, 'id'>) => {
     if (!user) return;
 
@@ -543,7 +633,6 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       };
 
       setGoals(prev => [newGoal, ...prev]);
-
       toast({
         title: "Meta adicionada",
         description: "Meta criada com sucesso!"
@@ -611,7 +700,6 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (error) throw error;
 
       setGoals(prev => prev.filter(goal => goal.id !== id));
-
       toast({
         title: "Meta excluída",
         description: "Meta excluída com sucesso!"
@@ -626,7 +714,69 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  // Budget methods
+  return (
+    <GoalsContext.Provider value={{
+      goals,
+      addGoal,
+      updateGoal,
+      deleteGoal,
+      loading
+    }}>
+      {children}
+    </GoalsContext.Provider>
+  );
+};
+
+// Budgets Context Provider
+export const BudgetsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    loadBudgets();
+  }, [user]);
+
+  const loadBudgets = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('budgets')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setBudgets(data?.map((b: any) => ({
+        id: b.id,
+        category: b.category,
+        limit: Number(b.budget_limit),
+        spent: Number(b.spent),
+        period: b.period as 'monthly' | 'weekly' | 'yearly',
+        color: b.color,
+        alerts: b.alerts
+      })) || []);
+    } catch (error: any) {
+      console.error('Error loading budgets:', error);
+      toast({
+        title: "Erro ao carregar orçamentos",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const addBudget = async (budgetData: Omit<Budget, 'id' | 'spent'>) => {
     if (!user) return;
 
@@ -658,7 +808,6 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       };
 
       setBudgets(prev => [newBudget, ...prev]);
-
       toast({
         title: "Orçamento adicionado",
         description: "Orçamento criado com sucesso!"
@@ -724,7 +873,6 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (error) throw error;
 
       setBudgets(prev => prev.filter(budget => budget.id !== id));
-
       toast({
         title: "Orçamento excluído",
         description: "Orçamento excluído com sucesso!"
@@ -739,34 +887,32 @@ export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const value = {
-    accounts,
-    transactions,
-    creditCards,
-    categories,
-    goals,
-    budgets,
-    addAccount,
-    addTransaction,
-    addCreditCard,
-    updateAccount,
-    deleteAccount,
-    deleteTransaction,
-    addGoal,
-    updateGoal,
-    deleteGoal,
-    addBudget,
-    updateBudget,
-    deleteBudget,
-    getTotalBalance,
-    getMonthlyIncome,
-    getMonthlyExpenses,
-    loading,
-  };
-
   return (
-    <FinancialContext.Provider value={value}>
+    <BudgetsContext.Provider value={{
+      budgets,
+      addBudget,
+      updateBudget,
+      deleteBudget,
+      loading
+    }}>
       {children}
-    </FinancialContext.Provider>
+    </BudgetsContext.Provider>
+  );
+};
+
+// Main Financial Provider
+export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  return (
+    <AccountsProvider>
+      <TransactionsProvider>
+        <CreditCardsProvider>
+          <GoalsProvider>
+            <BudgetsProvider>
+              {children}
+            </BudgetsProvider>
+          </GoalsProvider>
+        </CreditCardsProvider>
+      </TransactionsProvider>
+    </AccountsProvider>
   );
 };
