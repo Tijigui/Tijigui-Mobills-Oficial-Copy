@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  password     String
+  createdAt    DateTime      @default(now()) @map("created_at")
+  accounts     Account[]
+  transactions Transaction[]
+  creditCards  CreditCard[]
+  goals        FinancialGoal[]
+  budgets      Budget[]
+
+  @@map("users")
+}
+
+model Account {
+  id        String   @id @default(uuid())
+  name      String
+  bank      String
+  type      String
+  balance   Float
+  color     String
+  createdAt DateTime @default(now()) @map("created_at")
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  transactions Transaction[]
+
+  @@map("accounts")
+}
+
+model Transaction {
+  id          String    @id @default(uuid())
+  description String
+  amount      Float
+  type        String // "income" or "expense"
+  category    String
+  date        DateTime  @default(now())
+  recurring   Boolean?
+  tags        String[]
+  createdAt   DateTime  @default(now()) @map("created_at")
+  userId      String    @map("user_id")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId   String    @map("account_id")
+  account     Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
+}
+
+model CreditCard {
+  id             String   @id @default(uuid())
+  name           String
+  bank           String
+  limit          Float    @map("card_limit")
+  currentBalance Float    @default(0) @map("current_balance")
+  dueDate        Int      @map("due_date")
+  closingDate    Int      @map("closing_date")
+  color          String
+  createdAt      DateTime @default(now()) @map("created_at")
+  userId         String   @map("user_id")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("credit_cards")
+}
+
+model FinancialGoal {
+  id            String    @id @default(uuid())
+  title         String
+  description   String?
+  targetAmount  Float     @map("target_amount")
+  currentAmount Float     @default(0) @map("current_amount")
+  deadline      DateTime
+  category      String
+  color         String
+  completed     Boolean?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  userId        String    @map("user_id")
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("financial_goals")
+}
+
+model Budget {
+  id        String   @id @default(uuid())
+  category  String
+  limit     Float    @map("budget_limit")
+  spent     Float    @default(0)
+  period    String // "monthly", "weekly", "yearly"
+  color     String
+  alerts    Boolean?
+  createdAt DateTime @default(now()) @map("created_at")
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("budgets")
+}
