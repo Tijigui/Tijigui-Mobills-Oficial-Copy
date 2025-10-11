@@ -1,10 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Account, Transaction, CreditCard, Category, DEFAULT_CATEGORIES } from '@/types/financial';
 import { FinancialGoal, Budget } from '@/types/goals';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { useFinancialCalculations } from '@/hooks/useFinancialCalculations';
 
 // Contexts for different entities
 interface AccountsContextType {
@@ -51,43 +50,38 @@ const CreditCardsContext = createContext<CreditCardsContextType | undefined>(und
 const GoalsContext = createContext<GoalsContextType | undefined>(undefined);
 const BudgetsContext = createContext<BudgetsContextType | undefined>(undefined);
 
-// Hook for financial calculations
+// Hook for financial data (NO CALCULATIONS)
 export const useFinancial = () => {
-  const accounts = useContext(AccountsContext);
-  const transactions = useContext(TransactionsContext);
-  const creditCards = useContext(CreditCardsContext);
-  const goals = useContext(GoalsContext);
-  const budgets = useContext(BudgetsContext);
+  const accountsContext = useContext(AccountsContext);
+  const transactionsContext = useContext(TransactionsContext);
+  const creditCardsContext = useContext(CreditCardsContext);
+  const goalsContext = useContext(GoalsContext);
+  const budgetsContext = useContext(BudgetsContext);
   
-  if (!accounts || !transactions || !creditCards || !goals || !budgets) {
+  if (!accountsContext || !transactionsContext || !creditCardsContext || !goalsContext || !budgetsContext) {
     throw new Error('useFinancial must be used within FinancialProvider');
   }
 
-  const calculations = useFinancialCalculations();
-
   return {
-    accounts: accounts.accounts,
-    transactions: transactions.transactions,
-    creditCards: creditCards.creditCards,
+    accounts: accountsContext.accounts,
+    transactions: transactionsContext.transactions,
+    creditCards: creditCardsContext.creditCards,
     categories: DEFAULT_CATEGORIES,
-    goals: goals.goals,
-    budgets: budgets.budgets,
-    addAccount: accounts.addAccount,
-    addTransaction: transactions.addTransaction,
-    addCreditCard: creditCards.addCreditCard,
-    updateAccount: accounts.updateAccount,
-    deleteAccount: accounts.deleteAccount,
-    deleteTransaction: transactions.deleteTransaction,
-    addGoal: goals.addGoal,
-    updateGoal: goals.updateGoal,
-    deleteGoal: goals.deleteGoal,
-    addBudget: budgets.addBudget,
-    updateBudget: budgets.updateBudget,
-    deleteBudget: budgets.deleteBudget,
-    getTotalBalance: calculations.totalBalance,
-    getMonthlyIncome: calculations.monthlyIncome,
-    getMonthlyExpenses: calculations.monthlyExpenses,
-    loading: accounts.loading || transactions.loading || creditCards.loading || goals.loading || budgets.loading,
+    goals: goalsContext.goals,
+    budgets: budgetsContext.budgets,
+    addAccount: accountsContext.addAccount,
+    updateAccount: accountsContext.updateAccount,
+    deleteAccount: accountsContext.deleteAccount,
+    addTransaction: transactionsContext.addTransaction,
+    deleteTransaction: transactionsContext.deleteTransaction,
+    addCreditCard: creditCardsContext.addCreditCard,
+    addGoal: goalsContext.addGoal,
+    updateGoal: goalsContext.updateGoal,
+    deleteGoal: goalsContext.deleteGoal,
+    addBudget: budgetsContext.addBudget,
+    updateBudget: budgetsContext.updateBudget,
+    deleteBudget: budgetsContext.deleteBudget,
+    loading: accountsContext.loading || transactionsContext.loading || creditCardsContext.loading || goalsContext.loading || budgetsContext.loading,
   };
 };
 
@@ -285,7 +279,7 @@ export const TransactionsProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setLoading(true);
       const { data, error } = await supabase
         .from('transactions')
-        .select('*, accounts!transactions_account_id_fkey(name)')
+        .select('*')
         .eq('user_id', user.id)
         .order('date', { ascending: false });
 
@@ -297,7 +291,7 @@ export const TransactionsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         amount: Number(t.amount),
         type: t.type as 'income' | 'expense',
         category: t.category,
-        account: t.accounts?.name || '',
+        account: t.account_id, // Use account_id
         date: new Date(t.date),
         recurring: t.recurring,
         tags: t.tags || []
@@ -318,14 +312,11 @@ export const TransactionsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (!user) return;
 
     try {
-      const account = transactions.find(t => t.account === transactionData.account)?.account;
-      if (!account) throw new Error('Conta não encontrada');
-
       const { data, error } = await supabase
         .from('transactions')
         .insert({
           user_id: user.id,
-          account_id: account,
+          account_id: transactionData.account, // This is the account ID from the form
           description: transactionData.description,
           amount: transactionData.amount,
           type: transactionData.type,
@@ -345,7 +336,7 @@ export const TransactionsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         amount: Number(data.amount),
         type: data.type as 'income' | 'expense',
         category: data.category,
-        account: transactionData.account,
+        account: data.account_id,
         date: new Date(data.date),
         recurring: data.recurring,
         tags: data.tags || []
@@ -379,17 +370,21 @@ export const TransactionsProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       // Update account balance first
       const { error: updateError } = await supabase.rpc('update_account_balance', {
-        account_id: transaction.account,
+        account_id: transaction.account, // transaction.account is the ID
         balance_change: balanceChange
       });
 
       if (updateError) {
         // Fallback to individual updates if RPC fails
-        const currentBalance = (await supabase
+        const { data: accountData, error: accountError } = await supabase
           .from('accounts')
           .select('balance')
           .eq('id', transaction.account)
-          .single()).data?.balance || 0;
+          .single();
+        
+        if(accountError) throw accountError;
+
+        const currentBalance = accountData?.balance || 0;
 
         const { error: directUpdateError } = await supabase
           .from('accounts')

@@ -9,7 +9,7 @@ import { Budget } from '@/types/goals';
 import { BudgetForm } from './forms/BudgetForm';
 
 const BudgetTracker: React.FC = () => {
-  const { budgets = [], transactions, addBudget, updateBudget, deleteBudget } = useFinancial();
+  const { budgets = [], transactions, categories, addBudget, updateBudget, deleteBudget } = useFinancial();
   const [showForm, setShowForm] = useState(false);
   const [editingBudget, setEditingBudget] = useState<string | null>(null);
 
@@ -29,10 +29,13 @@ const BudgetTracker: React.FC = () => {
         break;
     }
 
+    const category = categories.find(c => c.name === budget.category);
+    if (!category) return 0;
+
     return transactions
       .filter(t => 
         t.type === 'expense' && 
-        t.category === budget.category &&
+        t.category === category.id &&
         new Date(t.date) >= startDate
       )
       .reduce((sum, t) => sum + t.amount, 0);
