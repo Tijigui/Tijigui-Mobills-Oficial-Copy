@@ -7,17 +7,38 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell, PieCha
 
 const Dashboard: React.FC = () => {
   const { 
-    getTotalBalance, 
-    getMonthlyIncome, 
-    getMonthlyExpenses, 
     transactions, 
     accounts,
     categories 
   } = useFinancial();
 
-  const totalBalance = getTotalBalance();
-  const monthlyIncome = getMonthlyIncome();
-  const monthlyExpenses = getMonthlyExpenses();
+  const totalBalance = React.useMemo(() => 
+    accounts.reduce((sum, account) => sum + account.balance, 0),
+    [accounts]
+  );
+
+  const monthlySummary = React.useMemo(() => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    const monthlyTransactions = transactions.filter(t => {
+      const transactionDate = new Date(t.date);
+      return transactionDate >= startOfMonth && transactionDate <= endOfMonth;
+    });
+
+    const income = monthlyTransactions
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const expenses = monthlyTransactions
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+      
+    return { income, expenses };
+  }, [transactions]);
+
+  const { income: monthlyIncome, expenses: monthlyExpenses } = monthlySummary;
   const monthlySavings = monthlyIncome - monthlyExpenses;
 
   // Calculate previous month data for comparison
@@ -25,11 +46,12 @@ const Dashboard: React.FC = () => {
     const lastMonth = new Date();
     lastMonth.setMonth(lastMonth.getMonth() - 1);
     return transactions
-      .filter(t => 
-        t.type === 'income' && 
-        t.date.getMonth() === lastMonth.getMonth() && 
-        t.date.getFullYear() === lastMonth.getFullYear()
-      )
+      .filter(t => {
+        const transactionDate = new Date(t.date);
+        return t.type === 'income' && 
+               transactionDate.getMonth() === lastMonth.getMonth() && 
+               transactionDate.getFullYear() === lastMonth.getFullYear();
+      })
       .reduce((total, t) => total + t.amount, 0);
   }, [transactions]);
 
@@ -37,11 +59,12 @@ const Dashboard: React.FC = () => {
     const lastMonth = new Date();
     lastMonth.setMonth(lastMonth.getMonth() - 1);
     return transactions
-      .filter(t => 
-        t.type === 'expense' && 
-        t.date.getMonth() === lastMonth.getMonth() && 
-        t.date.getFullYear() === lastMonth.getFullYear()
-      )
+      .filter(t => {
+        const transactionDate = new Date(t.date);
+        return t.type === 'expense' && 
+               transactionDate.getMonth() === lastMonth.getMonth() && 
+               transactionDate.getFullYear() === lastMonth.getFullYear();
+      })
       .reduce((total, t) => total + t.amount, 0);
   }, [transactions]);
 
@@ -75,19 +98,21 @@ const Dashboard: React.FC = () => {
     const month = date.toLocaleString('pt-BR', { month: 'short' });
     
     const income = transactions
-      .filter(t => 
-        t.type === 'income' && 
-        t.date.getMonth() === date.getMonth() && 
-        t.date.getFullYear() === date.getFullYear()
-      )
+      .filter(t => {
+        const transactionDate = new Date(t.date);
+        return t.type === 'income' && 
+               transactionDate.getMonth() === date.getMonth() && 
+               transactionDate.getFullYear() === date.getFullYear();
+      })
       .reduce((sum, t) => sum + t.amount, 0);
 
     const expenses = transactions
-      .filter(t => 
-        t.type === 'expense' && 
-        t.date.getMonth() === date.getMonth() && 
-        t.date.getFullYear() === date.getFullYear()
-      )
+      .filter(t => {
+        const transactionDate = new Date(t.date);
+        return t.type === 'expense' && 
+               transactionDate.getMonth() === date.getMonth() && 
+               transactionDate.getFullYear() === date.getFullYear();
+      })
       .reduce((sum, t) => sum + t.amount, 0);
 
     return {
