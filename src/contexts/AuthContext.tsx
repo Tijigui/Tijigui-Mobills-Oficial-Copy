@@ -1,13 +1,14 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import apiClient from '@/lib/api';
+import { User } from '@supabase/supabase-js'; // Reutilizando o tipo, mas poderia ser um tipo customizado
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
   loading: boolean;
-  signOut: () => Promise<void>;
+  signIn: (credentials: { email: string; password: string }) => Promise<void>;
+  signUp: (credentials: { email: string; password: string }) => Promise<void>;
+  signOut: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,41 +23,56 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+  const verifyToken = useCallback(async () => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      try {
+        // Em uma aplicação real, você faria uma chamada para um endpoint como /api/auth/me
+        // para validar o token e obter os dados do usuário.
+        const userData = await apiClient.get<User>('/api/auth/me');
+        setUser(userData);
+      } catch (error) {
+        console.error("Session validation failed", error);
+        localStorage.removeItem('authToken');
+        setUser(null);
       }
-    );
-
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    }
+    setLoading(false);
   }, []);
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
+  useEffect(() => {
+    verifyToken();
+  }, [verifyToken]);
+
+  const signIn = async (credentials: { email: string; password: string }) => {
+    const { token, user: userData } = await apiClient.post<{ token: string; user: User }>('/api/auth/login', credentials);
+    localStorage.setItem('authToken', token);
+    setUser(userData);
+    navigate('/');
+  };
+
+  const signUp = async (credentials: { email: string; password: string }) => {
+    await apiClient.post('/api/auth/register', credentials);
+    // Normalmente, você redirecionaria para a página de login com uma mensagem de sucesso.
+    navigate('/auth');
+  };
+
+  const signOut = () => {
+    setUser(null);
+    localStorage.removeItem('authToken');
     navigate('/auth');
   };
 
   const value = {
     user,
-    session,
     loading,
+    signIn,
+    signUp,
     signOut,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
 };
